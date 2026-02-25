@@ -16,8 +16,8 @@
 
 ```bash
 # 1. 克隆项目
-git clone <repository-url>
-cd ai-creative-hub
+git clone https://github.com/sd945656252-gif/myproject.git
+cd myproject
 
 # 2. 配置环境变量
 cp .docker.env .docker.env.local
@@ -126,7 +126,7 @@ COMFYUI_API_URL=http://localhost:8188
 ## 项目结构
 
 ```
-ai-creative-hub/
+myproject/
 ├── backend/                 # 后端服务
 │   ├── app/
 │   │   ├── api/            # API 路由
@@ -219,6 +219,7 @@ npm run dev
 | [DEPLOYMENT_STEPS.md](DEPLOYMENT_STEPS.md) | 详细部署步骤 |
 | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | 故障排除指南 |
 | [DEPLOYMENT_COMPLETE.md](DEPLOYMENT_COMPLETE.md) | 部署完成报告 |
+| [PUSH_TO_GITHUB.md](PUSH_TO_GITHUB.md) | GitHub 上传指南 |
 
 ## 环境要求
 
@@ -256,6 +257,10 @@ A: API Keys 是可选的，未配置时相关功能会跳过。如需使用，�
 - ✅ 部署脚本: 完成
 
 **项目状态**: ✅ 就绪部署
+
+## GitHub 仓库
+
+🌐 https://github.com/sd945656252-gif/myproject
 
 ## 许可证
 
