@@ -71,6 +71,8 @@ export function ChatInterface({
       setIsStreaming(true);
       setStreamingContent("");
 
+      let fullContent = "";
+
       // Use streaming API
       for await (const chunk of promptService.stream(
         {
@@ -86,13 +88,14 @@ export function ChatInterface({
           throw new Error(chunk.error);
         }
 
-        setStreamingContent((prev) => prev + chunk.content);
+        fullContent += chunk.content;
+        setStreamingContent(fullContent);
 
         if (chunk.done && chunk.metadata) {
           // Add the complete message
           addMessage({
             role: "assistant",
-            content: streamingContent + chunk.content,
+            content: fullContent,
             metadata: {
               tags: chunk.metadata.tags,
               suggestions: chunk.metadata.suggestions,
@@ -115,7 +118,7 @@ export function ChatInterface({
     } finally {
       setIsStreaming(false);
     }
-  }, [currentModule, addMessage, streamingContent]);
+  }, [currentModule, addMessage]);
 
   const handleImageGenerate = useCallback(async (userMessage: string) => {
     try {

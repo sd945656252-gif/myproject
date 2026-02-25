@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 
 // Mock prompt optimization for demo
 function optimizePrompt(input: string): { prompt: string; tags: string[]; suggestions: string[] } {
@@ -28,7 +28,6 @@ function optimizePrompt(input: string): { prompt: string; tags: string[]; sugges
 
 // Mock image-to-prompt reverse engineering
 function imageToPrompt(): { prompt: string; tags: string[]; suggestions: string[] } {
-  const subjects = ["portrait", "landscape", "still life", "abstract", "architecture"];
   const styles = ["impressionist", "realistic", "professional", "artistic", "high-quality"];
   const qualities = ["8K", "ultra-detailed", "masterpiece", "award-winning", "trending on artstation"];
 
@@ -58,40 +57,85 @@ export async function POST(request: NextRequest) {
 
     // Validate request
     if (type !== "optimize" && type !== "image_to_prompt") {
-      return NextResponse.json(
-        { success: false, error: "Invalid type. Must be 'optimize' or 'image_to_prompt'" },
-        { status: 400 }
+      return new Response(
+        JSON.stringify({ error: "Invalid type. Must be 'optimize' or 'image_to_prompt'" }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
 
     if (type === "optimize" && !inputPrompt) {
-      return NextResponse.json(
-        { success: false, error: "Prompt is required for optimization" },
-        { status: 400 }
+      return new Response(
+        JSON.stringify({ error: "Prompt is required for optimization" }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    // Simulate processing delay
-    await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 1000));
+    // Create a TransformStream for SSE
+    const encoder = new TextEncoder();
+    const stream = new TransformStream();
+    const writer = stream.writable.getWriter();
 
-    // Generate result
-    let result;
-    if (type === "optimize") {
-      result = optimizePrompt(inputPrompt);
-    } else {
-      result = imageToPrompt();
-    }
+    // Process in background
+    (async () => {
+      try {
+        // Send initial chunk
+        await writer.write(
+          encoder.encode(`data: ${JSON.stringify({ content: "", done: false })}\n\n`)
+        );
 
-    return NextResponse.json({
-      success: true,
-      message: "Prompt generated successfully",
-      data: result,
+        // Simulate processing delay
+        await new Promise(resolve => setTimeout(resolve, 300));
+
+        // Generate result
+        const result = type === "optimize" ? optimizePrompt(inputPrompt) : imageToPrompt();
+
+        // Stream the prompt character by character for effect
+        const promptText = result.prompt;
+        const chunkSize = 20;
+
+        for (let i = 0; i < promptText.length; i += chunkSize) {
+          const chunk = promptText.slice(i, i + chunkSize);
+          await writer.write(
+            encoder.encode(`data: ${JSON.stringify({ content: chunk, done: false })}\n\n`)
+          );
+          await new Promise(resolve => setTimeout(resolve, 50));
+        }
+
+        // Send final chunk with metadata
+        await writer.write(
+          encoder.encode(
+            `data: ${JSON.stringify({
+              content: "",
+              done: true,
+              metadata: {
+                tags: result.tags,
+                suggestions: result.suggestions,
+                notification: "Prompt generated successfully",
+              },
+            })}\n\n`
+          )
+        );
+      } catch (error) {
+        await writer.write(
+          encoder.encode(`data: ${JSON.stringify({ error: "Stream error", done: true })}\n\n`)
+        );
+      } finally {
+        await writer.close();
+      }
+    })();
+
+    return new Response(stream.readable, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+      },
     });
   } catch (error) {
     console.error("Prompt generation error:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to generate prompt" },
-      { status: 500 }
+    return new Response(
+      JSON.stringify({ error: "Failed to generate prompt" }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
 }

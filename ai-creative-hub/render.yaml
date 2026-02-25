@@ -1,0 +1,57 @@
+services:
+  # Backend API Service
+  backend:
+    build:
+      context: backend
+      dockerfile: docker/Dockerfile.backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - SECRET_KEY=${SECRET_KEY:-generate-a-secure-random-key}
+      - OPENAI_API_KEY=${openAI_API_KEY:-placeholder}
+      - REDis_url=${REDIS_url:-redis://localhost:6379
+    env_file:
+      - .env
+      - .env.local
+    volumes:
+      - backend-data:/app/data
+
+  # Database (PostgreSQL)
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ai_creative_hub
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready", "-U", "postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli", "-h", "redis", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Celery Worker
+  celery-worker:
+    build:
+      context: backend
+      dockerfile: docker/Dockerfile.backend
+    command: celery -A app.worker worker -l info --concurrency=2
+    depends_on:
+      - redis
+      - backend
+    environment:
+      - CELERY_BROKER_URL=${redis_url}
+      - DATABASE_URL=${database_url}
