@@ -1,0 +1,41 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "regions": ["hkg1", "sin1"],
+  "env": {
+    "NEXT_PUBLIC_API_URL": {
+      "description": "后端 API 地址",
+      "value": "https://ai-creative-hub-backend.vercel.app"
+    },
+    "NEXT_PUBLIC_APP_NAME": {
+      "description": "应用名称",
+      "value": "AI Creative Hub"
+    },
+    "NEXT_PUBLIC_APP_VERSION": {
+      "description": "应用版本",
+      "value": "1.0.0"
+    }
+  },
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        }
+      ]
+    }
+  ]
+}

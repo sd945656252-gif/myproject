@@ -1,6 +1,6 @@
 'use client';
 
-import { useError } from './ErrorProvider';
+import { useError } from './providers/ErrorProvider';
 import { XCircle, AlertCircle } from 'lucide-react';
 import { useEffect } from 'react';
 

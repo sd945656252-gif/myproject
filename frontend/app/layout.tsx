@@ -1,9 +1,6 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
-import { QueryProvider } from '@/components/providers/QueryProvider'
-import ErrorProvider, { ErrorBoundaryWrapper } from '@/components/providers/ErrorProvider'
-import ErrorDisplay from '@/components/ErrorDisplay'
 
 const inter = Inter({ subsets: ['latin', 'latin-ext'] })
 
@@ -21,14 +18,7 @@ export default function RootLayout({
   return (
     <html lang="zh-CN" suppressHydrationWarning>
       <body className={inter.className}>
-        <ErrorBoundaryWrapper>
-          <ErrorProvider>
-            <QueryProvider>
-              {children}
-              <ErrorDisplay />
-            </QueryProvider>
-          </ErrorProvider>
-        </ErrorBoundaryWrapper>
+        {children}
       </body>
     </html>
   )

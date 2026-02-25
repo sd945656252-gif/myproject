@@ -1,7 +1,7 @@
 'use client';
 
 import React, { Component, ReactNode } from 'react';
-import { useError } from './ErrorProvider';
+import { useError } from './providers/ErrorProvider';
 
 interface Props {
   children: ReactNode;

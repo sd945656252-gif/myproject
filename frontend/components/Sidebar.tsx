@@ -3,8 +3,8 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useAppStore } from '@/lib/store'
-import { cn } from '@/lib/utils'
+import { useAppStore } from '../app/lib/store'
+import { cn } from '../app/lib/utils'
 import {
   MessageSquare,
   Wand2,

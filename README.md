@@ -2,17 +2,51 @@
 
 一个全能 AI 创作工作站，集成生图、生视频、音乐生成、语音合成及一键工作流等功能。
 
+**🌐 在线演示**: https://ai-creative-hub.vercel.app (部署后)
+
+**📦 GitHub 仓库**: https://github.com/sd945656252-gif/myproject
+
 ## 🚀 快速开始
 
 ### 推荐部署方式
 
 | 部署方式 | 适用场景 | 文档 |
 |---------|---------|------|
+| 🌐 Vercel | **永久在线网页端（推荐）** | [VERCEL_READY.md](VERCEL_READY.md) |
 | 🐳 Docker Compose | 本地开发、快速测试 | [QUICK_START.md](QUICK_START.md) |
 | 💻 本地直接运行 | 开发调试、无 Docker 环境 | [NATIVE_DEPLOYMENT_GUIDE.md](NATIVE_DEPLOYMENT_GUIDE.md) |
 | ☁️ 云服务部署 | 生产环境、永久在线 | [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) |
 
-### Docker Compose 部署 (最简单)
+### Vercel 部署（永久在线网页端）
+
+#### 方式一：通过 Vercel Dashboard（最简单）
+
+1. 访问 https://vercel.com/signup，使用 GitHub 登录
+2. 点击 "Add New" → "Project"
+3. 选择 `myproject` 仓库
+4. Root Directory 设置为 `frontend`
+5. 配置环境变量：
+   - `NEXT_PUBLIC_API_URL`: 你的后端 API 地址
+   - `NEXT_PUBLIC_APP_NAME`: AI Creative Hub
+6. 点击 "Deploy"
+
+详细说明：[VERCEL_READY.md](VERCEL_READY.md)
+
+#### 方式二：使用本地部署脚本
+
+```bash
+# 克隆项目
+git clone https://github.com/sd945656252-gif/myproject.git
+cd myproject
+
+# 运行部署脚本
+chmod +x vercel-local-deploy.sh
+./vercel-local-deploy.sh
+```
+
+部署成功后访问：https://ai-creative-hub.vercel.app
+
+### Docker Compose 部署 (本地开发)
 
 ```bash
 # 1. 克隆项目
@@ -219,7 +253,7 @@ npm run dev
 | [DEPLOYMENT_STEPS.md](DEPLOYMENT_STEPS.md) | 详细部署步骤 |
 | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | 故障排除指南 |
 | [DEPLOYMENT_COMPLETE.md](DEPLOYMENT_COMPLETE.md) | 部署完成报告 |
-| [PUSH_TO_GITHUB.md](PUSH_TO_GITHUB.md) | GitHub 上传指南 |
+| [VERCEL_READY.md](VERCEL_READY.md) | Vercel 部署状态 |
 
 ## 环境要求
 
