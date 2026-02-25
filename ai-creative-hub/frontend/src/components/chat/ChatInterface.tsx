@@ -1,18 +1,25 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Loader2, Sparkles, Image as ImageIcon, X } from "lucide-react";
+import { Send, Loader2, Sparkles, Image as ImageIcon, X, Settings, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useChatStore, useUserStore } from "@/stores";
+import { useChatStore, useUserStore, useApiConfigStore } from "@/stores";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
-import { promptService } from "@/services/promptService";
-import { imageService } from "@/services/imageService";
 import { FileUpload, UploadedFile } from "@/components/ui/file-upload";
 import { StreamingText } from "@/components/ui/streaming-text";
+import Link from "next/link";
+import {
+  generateImage,
+  generateVideo,
+  generateMusic,
+  generateVoice,
+  optimizePrompt,
+  getActiveApiConfig,
+} from "@/services/aiService";
 
 interface ChatInterfaceProps {
   placeholder?: string;
@@ -34,10 +41,26 @@ export function ChatInterface({
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
 
-  const { messages, addMessage, currentModule, isLoading: chatLoading, setIsLoading: setChatLoading } = useChatStore();
+  const { messages, addMessage, currentModule } = useChatStore();
   const { user } = useUserStore();
+  const { providers, configs } = useApiConfigStore();
+
+  // Check if API is configured
+  const hasApiConfig = useCallback(() => {
+    // workflow uses prompt category for API calls
+    const apiCategory = module === "workflow" ? "prompt" : module;
+    const { config } = getActiveApiConfig(apiCategory as "prompt" | "image" | "video" | "music" | "voice");
+    return !!config;
+  }, [module]);
+
+  // Get active provider name
+  const getActiveProviderName = useCallback(() => {
+    // workflow uses prompt category for API calls
+    const apiCategory = module === "workflow" ? "prompt" : module;
+    const { provider } = getActiveApiConfig(apiCategory as "prompt" | "image" | "video" | "music" | "voice");
+    return provider?.name || "Mock API (演示模式)";
+  }, [module]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -52,105 +75,145 @@ export function ChatInterface({
     }
   }, [input]);
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, []);
-
+  // Handle prompt optimization
   const handlePromptGenerate = useCallback(async (userMessage: string, imageBase64?: string) => {
-    abortControllerRef.current = new AbortController();
-
-    // Determine request type
-    const requestType = imageBase64 ? "image_to_prompt" : "optimize";
+    setIsStreaming(true);
+    setStreamingContent("");
 
     try {
-      setIsStreaming(true);
-      setStreamingContent("");
+      const result = await optimizePrompt({
+        prompt: userMessage,
+        targetApi: currentModule || undefined,
+        language: "zh",
+      });
 
-      let fullContent = "";
+      if (result.success && result.data) {
+        // Simulate streaming effect
+        const prompt = result.data.prompt;
+        const chunkSize = 15;
 
-      // Use streaming API
-      for await (const chunk of promptService.stream(
-        {
-          type: requestType,
-          prompt: userMessage,
-          image: imageBase64,
-          targetApi: currentModule || undefined,
-          language: "zh",
-        },
-        abortControllerRef.current.signal
-      )) {
-        if (chunk.error) {
-          throw new Error(chunk.error);
+        for (let i = 0; i < prompt.length; i += chunkSize) {
+          const chunk = prompt.slice(i, i + chunkSize);
+          setStreamingContent((prev) => prev + chunk);
+          await new Promise((resolve) => setTimeout(resolve, 30));
         }
 
-        fullContent += chunk.content;
-        setStreamingContent(fullContent);
-
-        if (chunk.done && chunk.metadata) {
-          // Add the complete message
-          addMessage({
-            role: "assistant",
-            content: fullContent,
-            metadata: {
-              tags: chunk.metadata.tags,
-              suggestions: chunk.metadata.suggestions,
-              provider: chunk.metadata.notification?.includes("fallback") ? "fallback" : "primary",
-            },
-          });
-          setStreamingContent("");
-        }
+        addMessage({
+          role: "assistant",
+          content: result.data.prompt,
+          metadata: {
+            tags: result.data.tags,
+            suggestions: result.data.suggestions,
+            provider: getActiveProviderName(),
+          },
+        });
+        setStreamingContent("");
+      } else {
+        throw new Error(result.error || "生成失败");
       }
     } catch (error) {
-      if ((error as Error).name === "AbortError") {
-        // User cancelled
-        addMessage({
-          role: "system",
-          content: "已取消生成",
-        });
-      } else {
-        throw error;
-      }
+      addMessage({
+        role: "system",
+        content: `生成失败: ${(error as Error).message}`,
+      });
     } finally {
       setIsStreaming(false);
     }
-  }, [currentModule, addMessage]);
+  }, [currentModule, addMessage, getActiveProviderName]);
 
+  // Handle image generation
   const handleImageGenerate = useCallback(async (userMessage: string) => {
-    try {
-      const response = await imageService.generate({
-        prompt: userMessage,
-        width: 1024,
-        height: 1024,
+    const result = await generateImage({
+      prompt: userMessage,
+      width: 1024,
+      height: 1024,
+    });
+
+    if (result.success && result.data) {
+      addMessage({
+        role: "assistant",
+        content: "图像生成完成",
+        metadata: {
+          images: result.data.images.map((img) => img.url),
+          provider: getActiveProviderName(),
+        },
       });
-
-      if (response.success && response.data) {
-        addMessage({
-          role: "assistant",
-          content: "图像生成完成",
-          metadata: {
-            images: response.data.images.map((img) => img.url),
-            provider: response.data.images[0]?.model,
-            model: response.data.images[0]?.model,
-          },
-        });
-      } else {
-        throw new Error(response.error || "生成失败");
-      }
-    } catch (error) {
-      throw error;
+    } else {
+      throw new Error(result.error || "图像生成失败");
     }
-  }, [addMessage]);
+  }, [addMessage, getActiveProviderName]);
 
+  // Handle video generation
+  const handleVideoGenerate = useCallback(async (userMessage: string) => {
+    const result = await generateVideo({
+      prompt: userMessage,
+      type: "text_to_video",
+      duration: 5,
+    });
+
+    if (result.success && result.data) {
+      addMessage({
+        role: "assistant",
+        content: "视频生成完成",
+        metadata: {
+          video: result.data.videoUrl,
+          provider: getActiveProviderName(),
+        },
+      });
+    } else {
+      throw new Error(result.error || "视频生成失败");
+    }
+  }, [addMessage, getActiveProviderName]);
+
+  // Handle music generation
+  const handleMusicGenerate = useCallback(async (userMessage: string) => {
+    const result = await generateMusic({
+      prompt: userMessage,
+      duration: 30,
+      instrumental: true,
+    });
+
+    if (result.success && result.data) {
+      addMessage({
+        role: "assistant",
+        content: "音乐生成完成",
+        metadata: {
+          audio: result.data.audioUrl,
+          provider: getActiveProviderName(),
+        },
+      });
+    } else {
+      throw new Error(result.error || "音乐生成失败");
+    }
+  }, [addMessage, getActiveProviderName]);
+
+  // Handle voice generation
+  const handleVoiceGenerate = useCallback(async (userMessage: string) => {
+    const result = await generateVoice({
+      text: userMessage,
+      speed: 1.0,
+    });
+
+    if (result.success && result.data) {
+      addMessage({
+        role: "assistant",
+        content: "语音合成完成",
+        metadata: {
+          audio: result.data.audioUrl,
+          provider: getActiveProviderName(),
+        },
+      });
+    } else {
+      throw new Error(result.error || "语音合成失败");
+    }
+  }, [addMessage, getActiveProviderName]);
+
+  // Main submit handler
   const handleSubmit = async () => {
     if ((!input.trim() && uploadedFiles.length === 0) || isLoading) return;
 
     const userMessage = input.trim();
-    const imageBase64 = uploadedFiles[0]?.url; // For image_to_prompt
+    const imageBase64 = uploadedFiles[0]?.url;
 
     // Add user message
     addMessage({
@@ -162,10 +225,8 @@ export function ChatInterface({
     setInput("");
     setUploadedFiles([]);
     setIsLoading(true);
-    setChatLoading(true);
 
     try {
-      // Call the callback if provided
       if (onSendMessage) {
         onSendMessage(userMessage);
       }
@@ -178,25 +239,29 @@ export function ChatInterface({
         case "image":
           await handleImageGenerate(userMessage);
           break;
+        case "video":
+          await handleVideoGenerate(userMessage);
+          break;
+        case "music":
+          await handleMusicGenerate(userMessage);
+          break;
+        case "voice":
+          await handleVoiceGenerate(userMessage);
+          break;
         default:
-          // Default response for other modules
           addMessage({
             role: "assistant",
             content: `收到您的请求: "${userMessage}"。${module} 模块正在开发中...`,
-            metadata: {
-              provider: "system",
-              model: "demo",
-            },
+            metadata: { provider: "system" },
           });
       }
     } catch (error) {
       addMessage({
         role: "system",
-        content: `抱歉，处理您的请求时出现错误: ${(error as Error).message}`,
+        content: `处理失败: ${(error as Error).message}`,
       });
     } finally {
       setIsLoading(false);
-      setChatLoading(false);
     }
   };
 
@@ -207,14 +272,7 @@ export function ChatInterface({
     }
   };
 
-  const handleCancelStream = () => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-  };
-
   const handleFileUpload = async (files: File[]): Promise<UploadedFile[]> => {
-    // Convert files to base64 for preview and API usage
     return Promise.all(
       files.map((file) => {
         return new Promise<UploadedFile>((resolve) => {
@@ -235,8 +293,26 @@ export function ChatInterface({
     );
   };
 
+  const isConfigured = hasApiConfig();
+
   return (
     <div className="flex h-full flex-col">
+      {/* API Status Banner */}
+      {!isConfigured && (
+        <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 flex items-center gap-2">
+          <AlertCircle className="h-4 w-4 text-amber-500" />
+          <span className="text-sm text-amber-700 dark:text-amber-400">
+            当前使用演示模式，配置 API 后可使用真实服务
+          </span>
+          <Link href="/settings">
+            <Button variant="link" size="sm" className="text-amber-600 dark:text-amber-400 px-2">
+              <Settings className="h-3 w-3 mr-1" />
+              配置 API
+            </Button>
+          </Link>
+        </div>
+      )}
+
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 ? (
@@ -245,9 +321,14 @@ export function ChatInterface({
               <Sparkles className="h-8 w-8 text-white" />
             </div>
             <h3 className="text-lg font-semibold mb-2">开始创作</h3>
-            <p className="text-muted-foreground max-w-sm">
+            <p className="text-muted-foreground max-w-sm mb-4">
               输入你的创意想法，AI 将帮助你将其变为现实
             </p>
+            {isConfigured && (
+              <Badge variant="outline" className="text-green-600 border-green-600">
+                已连接: {getActiveProviderName()}
+              </Badge>
+            )}
           </div>
         ) : (
           messages.map((message) => (
@@ -276,7 +357,7 @@ export function ChatInterface({
               >
                 <p className="text-sm whitespace-pre-wrap">{message.content}</p>
 
-                {/* Display generated content */}
+                {/* Display generated images */}
                 {message.metadata?.images && (
                   <div className="mt-2 grid grid-cols-2 gap-2">
                     {message.metadata.images.map((img, idx) => (
@@ -289,20 +370,23 @@ export function ChatInterface({
                           alt={`Generated image ${idx + 1}`}
                           fill
                           className="object-cover"
+                          unoptimized
                         />
                       </div>
                     ))}
                   </div>
                 )}
 
+                {/* Display video */}
                 {message.metadata?.video && (
                   <video
                     src={message.metadata.video}
                     controls
-                    className="mt-2 rounded-lg max-h-64"
+                    className="mt-2 rounded-lg max-h-64 w-full"
                   />
                 )}
 
+                {/* Display audio */}
                 {message.metadata?.audio && (
                   <audio
                     src={message.metadata.audio}
@@ -340,11 +424,6 @@ export function ChatInterface({
                     <Badge variant="secondary" className="text-xs">
                       {message.metadata.provider}
                     </Badge>
-                    {message.metadata.model && (
-                      <Badge variant="outline" className="text-xs">
-                        {message.metadata.model}
-                      </Badge>
-                    )}
                   </div>
                 )}
               </div>
@@ -389,16 +468,6 @@ export function ChatInterface({
             <div className="flex items-center gap-2 rounded-2xl bg-muted px-4 py-2.5">
               <Loader2 className="h-4 w-4 animate-spin" />
               <span className="text-sm text-muted-foreground">生成中...</span>
-              {isStreaming && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleCancelStream}
-                  className="h-6 px-2"
-                >
-                  取消
-                </Button>
-              )}
             </div>
           </div>
         )}
@@ -480,9 +549,7 @@ export function ChatInterface({
           </CardContent>
         </Card>
         <p className="mt-2 text-center text-xs text-muted-foreground">
-          {enableImageUpload
-            ? "支持上传图片进行图生文分析 | "
-            : ""}
+          {enableImageUpload ? "支持上传图片进行图生文分析 | " : ""}
           按 Enter 发送，Shift + Enter 换行
         </p>
       </div>
