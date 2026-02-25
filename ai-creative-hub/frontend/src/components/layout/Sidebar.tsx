@@ -14,7 +14,7 @@ import {
   LogOut,
   User,
   Menu,
-  X,
+  Key,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -26,7 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { useUserStore } from "@/stores";
+import { useUserStore, useApiConfigStore } from "@/stores";
 import { useState } from "react";
 
 const navItems = [
@@ -71,7 +71,10 @@ const navItems = [
 export function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useUserStore();
+  const { configs } = useApiConfigStore();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const hasActiveConfig = configs.some((c) => c.isActive);
 
   const NavContent = () => (
     <div className="flex h-full flex-col">
@@ -114,6 +117,39 @@ export function Sidebar() {
             </Link>
           );
         })}
+
+        {/* API 设置入口 */}
+        <div className="pt-4 border-t mt-4">
+          <Link
+            href="/settings"
+            onClick={() => setMobileOpen(false)}
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+              pathname === "/settings"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            )}
+          >
+            <Key className="h-5 w-5" />
+            <div className="flex flex-col">
+              <span>API 设置</span>
+              <span
+                className={cn(
+                  "text-xs",
+                  pathname === "/settings" ? "text-primary-foreground/70" : "text-muted-foreground"
+                )}
+              >
+                配置 API 接口密钥
+              </span>
+            </div>
+            {!hasActiveConfig && (
+              <span className="ml-auto flex h-2 w-2 rounded-full bg-orange-500" />
+            )}
+            {hasActiveConfig && (
+              <span className="ml-auto flex h-2 w-2 rounded-full bg-green-500" />
+            )}
+          </Link>
+        </div>
       </nav>
 
       <div className="border-t p-4">
@@ -143,9 +179,11 @@ export function Sidebar() {
                 <User className="mr-2 h-4 w-4" />
                 个人中心
               </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Settings className="mr-2 h-4 w-4" />
-                设置
+              <DropdownMenuItem asChild>
+                <Link href="/settings">
+                  <Settings className="mr-2 h-4 w-4" />
+                  API 设置
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={logout}>
@@ -155,9 +193,20 @@ export function Sidebar() {
             </DropdownMenuContent>
           </DropdownMenu>
         ) : (
-          <Link href="/login">
-            <Button className="w-full">登录</Button>
-          </Link>
+          <div className="space-y-2">
+            <Link href="/settings" className="block">
+              <Button variant="outline" className="w-full gap-2">
+                <Key className="h-4 w-4" />
+                API 设置
+                {!hasActiveConfig && (
+                  <span className="h-2 w-2 rounded-full bg-orange-500" />
+                )}
+              </Button>
+            </Link>
+            <Link href="/login">
+              <Button className="w-full">登录</Button>
+            </Link>
+          </div>
         )}
       </div>
     </div>
