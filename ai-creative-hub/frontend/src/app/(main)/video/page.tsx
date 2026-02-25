@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -50,9 +50,9 @@ export default function VideoPage() {
   const { setCurrentModule } = useChatStore();
 
   // Set current module on mount
-  useState(() => {
+  useEffect(() => {
     setCurrentModule("video");
-  });
+  }, [setCurrentModule]);
 
   const currentMode = MODE_CONFIG[mode];
 

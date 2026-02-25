@@ -62,12 +62,12 @@ export default function SettingsPage() {
 
   const handleSaveConfig = (providerId: string, apiKey: string, apiSecret?: string, baseUrl?: string) => {
     const existingConfig = configs.find((c) => c.providerId === providerId);
+    const provider = providers.find((p) => p.id === providerId);
 
     if (existingConfig) {
       updateConfig(existingConfig.id, { apiKey, apiSecret, baseUrl, isActive: true });
       toast.success("配置已更新");
     } else {
-      const provider = providers.find((p) => p.id === providerId);
       addConfig({
         providerId,
         providerName: provider?.name || "",
@@ -78,6 +78,12 @@ export default function SettingsPage() {
       });
       toast.success("配置已保存");
     }
+
+    // Activate the provider after saving config
+    if (provider) {
+      setActiveProvider(provider.category, providerId);
+    }
+
     setEditingConfig(null);
   };
 
