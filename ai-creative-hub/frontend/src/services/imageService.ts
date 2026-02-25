@@ -1,4 +1,4 @@
-import api from "./api";
+import fetchApi from "./api";
 import type {
   ApiResponse,
   ImageGenerateRequest,
@@ -11,71 +11,67 @@ export const imageService = {
    * Generate images from text
    */
   async generate(data: ImageGenerateRequest): Promise<ApiResponse<ImageGenerateResponse>> {
-    const response = await api.post<ApiResponse<ImageGenerateResponse>>("/image/generate", data);
-    return response.data;
+    return fetchApi<ImageGenerateResponse>("/image/generate", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
   },
 
   /**
    * Image to image transformation
    */
   async imageToImage(formData: FormData): Promise<ApiResponse<ImageGenerateResponse>> {
-    const response = await api.post<ApiResponse<ImageGenerateResponse>>("/image/image-to-image", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
+    const response = await fetch("/api/v1/image/image-to-image", {
+      method: "POST",
+      body: formData,
     });
-    return response.data;
+    return response.json();
   },
 
   /**
    * ControlNet generation
    */
   async controlNet(formData: FormData): Promise<ApiResponse<ImageGenerateResponse>> {
-    const response = await api.post<ApiResponse<ImageGenerateResponse>>("/image/controlnet", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
+    const response = await fetch("/api/v1/image/controlnet", {
+      method: "POST",
+      body: formData,
     });
-    return response.data;
+    return response.json();
   },
 
   /**
    * Inpainting
    */
   async inpaint(formData: FormData): Promise<ApiResponse<ImageGenerateResponse>> {
-    const response = await api.post<ApiResponse<ImageGenerateResponse>>("/image/inpaint", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
+    const response = await fetch("/api/v1/image/inpaint", {
+      method: "POST",
+      body: formData,
     });
-    return response.data;
+    return response.json();
   },
 
   /**
    * Remove background
    */
   async removeBackground(formData: FormData): Promise<ApiResponse<ImageGenerateResponse>> {
-    const response = await api.post<ApiResponse<ImageGenerateResponse>>("/image/remove-background", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
+    const response = await fetch("/api/v1/image/remove-background", {
+      method: "POST",
+      body: formData,
     });
-    return response.data;
+    return response.json();
   },
 
   /**
    * Get task status
    */
   async getTaskStatus(taskId: string): Promise<ApiResponse<TaskStatus>> {
-    const response = await api.get<ApiResponse<TaskStatus>>(`/image/task/${taskId}`);
-    return response.data;
+    return fetchApi<TaskStatus>(`/image/task/${taskId}`);
   },
 
   /**
    * Get available models
    */
   async getModels(): Promise<ApiResponse<{ models: Array<{ id: string; name: string; provider: string }> }>> {
-    const response = await api.get<ApiResponse<{ models: Array<{ id: string; name: string; provider: string }> }>>("/image/models");
-    return response.data;
+    return fetchApi<{ models: Array<{ id: string; name: string; provider: string }> }>("/image/models");
   },
 };

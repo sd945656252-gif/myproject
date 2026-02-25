@@ -1,4 +1,4 @@
-import api from "./api";
+import fetchApi from "./api";
 import type {
   ApiResponse,
   PromptGenerateRequest,
@@ -22,8 +22,10 @@ export const promptService = {
    * Generate or optimize a prompt
    */
   async generate(data: PromptGenerateRequest): Promise<ApiResponse<PromptGenerateResponse>> {
-    const response = await api.post<ApiResponse<PromptGenerateResponse>>("/prompt/generate", data);
-    return response.data;
+    return fetchApi<PromptGenerateResponse>("/prompt/generate", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
   },
 
   /**
@@ -85,7 +87,6 @@ export const promptService = {
    * Get task status for async prompt generation
    */
   async getTaskStatus(taskId: string): Promise<ApiResponse<TaskStatus>> {
-    const response = await api.get<ApiResponse<TaskStatus>>(`/prompt/task/${taskId}`);
-    return response.data;
+    return fetchApi<TaskStatus>(`/prompt/task/${taskId}`);
   },
 };

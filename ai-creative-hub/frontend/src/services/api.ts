@@ -1,37 +1,54 @@
-import axios from "axios";
+// API base URL - use relative path for local API routes
+const API_BASE = "/api/v1";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// Generic fetch wrapper with error handling
+async function fetchApi<T>(
+  endpoint: string,
+  options?: RequestInit
+): Promise<{ success: boolean; data?: T; error?: string; message?: string }> {
+  try {
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
-export const api = axios.create({
-  baseURL: `${API_URL}/api/v1`,
-  headers: {
-    "Content-Type": "application/json",
-  },
-  timeout: 60000,
-});
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...options?.headers,
+      },
+    });
 
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem("token");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    const data = await response.json();
+
+    if (!response.ok) {
+      if (response.status === 401 && typeof window !== "undefined") {
+        localStorage.removeItem("token");
+        // Don't redirect immediately to avoid issues
+      }
+      return { success: false, error: data.error || "Request failed" };
     }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
 
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem("token");
-      window.location.href = "/login";
-    }
-    return Promise.reject(error);
+    return data;
+  } catch (error) {
+    return { success: false, error: (error as Error).message };
   }
-);
+}
 
-export default api;
+// Task API
+export const taskApi = {
+  get: (taskId: string) =>
+    fetchApi<{ taskId: string; status: string; progress: number; result?: unknown }>(
+      `/task?taskId=${taskId}`
+    ),
+
+  create: (body: Record<string, unknown>) =>
+    fetchApi<{ taskId: string; status: string }>("/task", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+};
+
+// Export for services that need custom endpoints
+export { fetchApi };
+
+export default fetchApi;
