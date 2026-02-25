@@ -1,0 +1,74 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - .docker.env
+    environment:
+      - APP_NAME=AI Creative Hub
+      - APP_VERSION=0.1.0
+      - APP_ENV=development
+      - DEBUG=true
+      - DATABASE_URL=postgresql+asyncpg://app_db_user:secure_db_password_change_me_12345678@db:5432/ai_creative_hub
+      - DATABASE_TEST_URL=postgresql+asyncpg://app_db_user:secure_db_password_change_me_12345678@db:5432/ai_creative_hub_test
+      - REDIS_URL=redis://:secure_redis_password_change_me_12345@redis:6379
+      - CELERY_BROKER_URL=redis://:secure_redis_password_change_me_12345@redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://:secure_redis_password_change_me_12345@redis:6379/0
+      - SECRET_KEY=change_me_to_secure_random_secret_key_minimum_32_characters
+      - ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=60
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:8000
+      - CORS_ALLOW_CREDENTIALS=true
+    volumes:
+      - ./backend:/app
+      - ./uploads:/app/uploads
+      - ./outputs:/app/outputs
+    depends_on:
+      - db
+      - redis
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      - backend
+
+  db:
+    image: postgres:15-alpine
+    env_file:
+      - .docker.env
+    environment:
+      - POSTGRES_USER=app_db_user
+      - POSTGRES_PASSWORD=secure_db_password_change_me_12345678
+      - POSTGRES_DB=ai_creative_hub
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app_db_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --requirepass secure_redis_password_change_me_12345
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
